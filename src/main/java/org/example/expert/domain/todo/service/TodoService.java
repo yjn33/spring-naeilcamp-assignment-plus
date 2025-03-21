@@ -17,6 +17,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = false) // 읽기 전용 해제 1. 코드 개선 퀴즈 - @Transactional의 이해
@@ -47,10 +49,42 @@ public class TodoService {
         );
     }
 
-    public Page<TodoResponse> getTodos(int page, int size) {
+    public Page<TodoResponse> getTodos(int page, int size, String weather, String modifiedAt) {
         Pageable pageable = PageRequest.of(page - 1, size);
 
-        Page<Todo> todos = todoRepository.findAllByOrderByModifiedAtDesc(pageable);
+        //Page<Todo> todos = todoRepository.findAllByOrderByModifiedAtDesc(pageable);
+
+        LocalDateTime startDate = null;
+        LocalDateTime endDate = null;
+
+
+        if(modifiedAt != null && !modifiedAt.isEmpty()) {
+
+            String[] dates = modifiedAt.split(",");
+
+            if(dates.length == 2){
+
+                startDate = LocalDateTime.parse(dates[0].trim());
+                endDate = LocalDateTime.parse(dates[1].trim());
+            }
+
+        }
+
+        Page<Todo> todos;
+
+        if(weather != null && startDate != null && endDate != null) {
+            todos = todoRepository.findByWeatherAndModifiedAtBetween(pageable, weather, startDate, endDate);
+
+        } else if(weather != null) {
+            todos = todoRepository.findByWeather(pageable, weather);
+
+        } else if(startDate != null && endDate != null) {
+            todos = todoRepository.findByModifiedAtBetween(pageable, startDate, endDate);
+
+        } else {
+            todos = todoRepository.findAllByOrderByModifiedAtDesc(pageable);
+        }
+
 
         return todos.map(todo -> new TodoResponse(
                 todo.getId(),
